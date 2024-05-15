@@ -1,0 +1,82 @@
+<!-- views/index.ejs -->
+
+<head>
+    <!-- other tags... -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<% repos.forEach(repo=> { %>
+    <form class="form-card" onsubmit="updateRepo(event, '<%= repo.name %>')">
+        <label>Name: <a href="<%= repo.html_url %>" target="_blank">
+                <%= repo.name %>
+            </a></label>
+        <input type="hidden" name="name" value="<%= repo.name %>">
+        <label>Description:</label>
+        <input type="text" name="description" value="<%= repo.description %>">
+
+        <label>File Presence:</label>
+        <div>
+            <input type="radio" name="file_presence" value="personal" <%=repo.file_presence==='personal' ? 'checked'
+                : '' %>> Personal
+            <input type="radio" name="file_presence" value="private" <%=repo.file_presence==='private' ? 'checked' : ''
+                %>>
+            Private
+            <input type="radio" name="file_presence" value="common" <%=repo.file_presence==='common' ? 'checked' : ''
+                %>>
+            Common
+            <input type="radio" name="file_presence" value="mycrolinks" <%=repo.file_presence==='mycrolinks' ? 'checked'
+                : '' %>> Mycrolinks
+        </div>
+
+        <label>Category:</label>
+        <div>
+            <input type="radio" name="category" value="machine_learning" <%=repo.category==='machine_learning'
+                ? 'checked' : '' %>> Machine Learning
+            <input type="radio" name="category" value="web_application" <%=repo.category==='web_application' ? 'checked'
+                : '' %>> Web Application
+            <input type="radio" name="category" value="iot" <%=repo.category==='iot' ? 'checked' : '' %>> IoT
+            <br>
+            <input type="radio" name="category" value="mobile_application" <%=repo.category==='mobile_application'
+                ? 'checked' : '' %>> Mobile Application
+            <input type="radio" name="category" value="python_scripting" <%=repo.category==='python_scripting'
+                ? 'checked' : '' %>> Python Scripting
+            <input type="radio" name="category" value="misc" <%=(repo.category==='misc' ||repo.category==='' )
+                ? 'checked' : '' %>>
+            Miscellaneous
+        </div>
+
+        <label>Tags:</label>
+        <textarea name="tags"><%= repo.tags.join(', ') %></textarea>
+
+        <button type="submit">Update</button>
+    </form>
+    <% }); %>
+        <script>
+            function updateRepo(event, name) {
+                event.preventDefault();
+
+                const form = event.target;
+                const data = {
+                    name: form.name.value,
+                    description: form.description.value,
+                    file_presence: form.file_presence.value,
+                    category: form.category.value,
+                    tags: form.tags.value.split('\n').map(tag => tag.trim()),
+                };
+
+                fetch('/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.text())
+                    .then(result => {
+                        alert(result === 'OK' ? 'Update successful' : 'Update failed');
+                        console.log(result);
+                    })
+                    .catch(error => {
+                        alert('An error occurred during the update', error);
+                    });
+            }
+        </script>
