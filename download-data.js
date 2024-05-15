@@ -1,5 +1,6 @@
 const { Octokit } = require("@octokit/rest");
 const fs = require("fs");
+const path = require("path");
 
 require("dotenv").config();
 
@@ -7,13 +8,39 @@ const octokit = new Octokit({
   auth: process.env.GH_PAT, // GitHub Personal Access Token
 });
 
+// Function to fetch the content of a file in a repository
+async function fetchFileContent(username, repo, filePath) {
+  try {
+    // Fetch the content of the file
+    const content = await octokit.repos.getContent({
+      owner: username,
+      repo: repo.name,
+      path: filePath,
+    });
+
+    // Check if content.data and content.data.content exist
+    if (content.data && content.data.content) {
+      // Decode the content from base64 and convert it to a string
+      return Buffer.from(content.data.content, "base64").toString("utf8");
+    } else {
+      console.log(`No content found in ${filePath}`);
+      return null;
+    }
+  } catch (error) {
+    // Handle errors, excluding 404 errors (file not found)
+    if (error.status !== 404) {
+      console.error(error);
+    }
+  }
+}
+
 // Function to check the presence of specific files in the repository content
 function checkFilePresence(repoContent) {
-  const files = [".personal", ".mycrolinks"];
+  const files = ["personal", "mycrolinks"];
   const tags = [];
   files.forEach((file) => {
-    if (repoContent && repoContent.includes(file)) {
-      tags.push(file === ".personal" ? "personal" : "mycrolinks");
+    if (repoContent && repoContent[file] !== null) {
+      tags.push(file);
     }
   });
   if (tags.length === 2) {
@@ -27,16 +54,13 @@ function checkFilePresence(repoContent) {
 
 // Function to extract tags from repository content
 function getTags(repoContent) {
-  // Check if repository content or ".tags" file is missing
-  if (!repoContent || !repoContent[".tags"]) {
+  // Check if repository content or "tags" file is missing
+  if (!repoContent || !repoContent["tags"]) {
     return []; // No tags present
   }
 
-  // Decode the content from base64 and convert it to a string
-  const content = Buffer.from(repoContent[".tags"], "base64").toString("utf8");
-
   // Split the content by newline character and trim each tag
-  const tags = content.split("\n").map((tag) => tag.trim());
+  const tags = repoContent["tags"].split("\n").map((tag) => tag.trim());
 
   return tags;
 }
@@ -54,28 +78,26 @@ async function fetchAndSortRepos() {
   // Return the sorted repositories
   return repos;
 }
+
 // Function to fetch the content of a repository
 async function fetchRepoContent(username, repo) {
-  try {
-    // Fetch the content of the ".tags" file in the repository
-    const content = await octokit.repos.getContent({
-      owner: username,
-      repo: repo.name,
-      path: ".tags",
-    });
+  // Fetch the content of the ".tags", ".personal", and ".mycrolinks" files
+  const tagsContent = await fetchFileContent(username, repo, ".tags");
+  const personalContent = await fetchFileContent(username, repo, ".personal");
+  const mycrolinksContent = await fetchFileContent(
+    username,
+    repo,
+    ".mycrolinks"
+  );
 
-    // Decode the content from base64 and convert it to a string
-    return Buffer.from(content.data.content, "base64").toString("utf8");
-  } catch (error) {
-    // Handle errors, excluding 404 errors (file not found)
-    if (error.status !== 404) {
-      console.error(
-        `Error fetching content for ${repo.name}: ${error.message}`
-      );
-    }
-    return null;
-  }
+  // Return an object with the content of each file
+  return {
+    tags: tagsContent,
+    personal: personalContent,
+    mycrolinks: mycrolinksContent,
+  };
 }
+
 async function processRepo(username, repo) {
   // Log the repository being processed
   console.log("Processing repository:", repo.name);
@@ -85,6 +107,7 @@ async function processRepo(username, repo) {
 
   // Extract the tags from the repository content
   let tags = getTags(repoContent);
+  console.log(tags);
 
   // Extract the category from the tags
   const category = tags[0] || "";
@@ -94,6 +117,7 @@ async function processRepo(username, repo) {
 
   // Check the presence of specific files in the repository content
   const filePresence = checkFilePresence(repoContent);
+  console.log(filePresence);
 
   // Return the processed repository object
   return {
@@ -108,6 +132,7 @@ async function processRepo(username, repo) {
     tags: tags,
   };
 }
+
 // Function to fetch repositories for a given username
 async function fetchRepositories(username) {
   try {

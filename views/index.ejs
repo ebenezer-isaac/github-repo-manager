@@ -24,7 +24,7 @@
                 %>>
             Common
             <input type="radio" name="file_presence" value="mycrolinks" <%=repo.file_presence==='mycrolinks' ? 'checked'
-                : '' %>> Mycrolinks
+                : '' %>> MycroLinks
         </div>
 
         <label>Category:</label>
@@ -45,7 +45,7 @@
         </div>
 
         <label>Tags:</label>
-        <textarea name="tags"><%= repo.tags.join(', ') %></textarea>
+        <textarea name="tags"><%= repo.tags.join('\n') %></textarea>
 
         <button type="submit">Update</button>
     </form>
